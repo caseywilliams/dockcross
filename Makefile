@@ -22,7 +22,7 @@ GEN_IMAGE_DOCKERFILES = $(addsuffix /Dockerfile,$(GEN_IMAGES))
 # These images are expected to have explicit rules for *both* build and testing
 NON_STANDARD_IMAGES = browser-asmjs manylinux-x64 manylinux-x86
 
-DOCKER_COMPOSITE_SOURCES = common.docker common.debian common.manylinux common.crosstool common.windows
+DOCKER_COMPOSITE_SOURCES = common.docker common.debian common.el common.manylinux common.crosstool common.windows
 
 # This list all available images
 IMAGES = $(STANDARD_IMAGES) $(NON_STANDARD_IMAGES)
@@ -39,6 +39,23 @@ RM = --rm
 ifeq ("$(CIRCLECI)", "true")
 	RM =
 endif
+
+# Default Debian jessie base Dockerfile
+BASE_DOCKERFILE = Dockerfile
+ifeq ("$(BASE)", "centos7")
+	BASE_DOCKERFILE = centos7-base/Dockerfile
+	# Also append to the $ORG, so that all of the the centos images have a
+	# different name from the default image, whatever the org is:
+	ORG := $(ORG)-centos7
+	# Dockerfiles in subdirectories need this information to adjust for the base:
+	#   - ORG is used to construct the name of the final image ($ORG/template-name)
+	#   - BASE_IMAGE is used ony to set the FROM value; Default is dockcross/base
+	#   - CROSS_TRIPLE differs between base images, too
+	BASE_IMAGE_BUILD_ARGS = --build-arg ORG=$(ORG) \
+							--build-arg BASE_IMAGE=$(ORG)/base:latest \
+							--build-arg CROSS_TRIPLE=x86_64-redhat-linux
+endif
+# This is used in the subdirectories' Dockerfiles to select the base image
 
 #
 # images: This target builds all IMAGES (because it is the first one, it is built by default)
@@ -58,6 +75,7 @@ $(GEN_IMAGE_DOCKERFILES) Dockerfile: %Dockerfile: %Dockerfile.in $(DOCKER_COMPOS
 	sed \
 		-e '/common.docker/ r common.docker' \
 		-e '/common.debian/ r common.debian' \
+		-e '/common.el/ r common.el' \
 		-e '/common.manylinux/ r common.manylinux' \
 		-e '/common.crosstool/ r common.crosstool' \
 		-e '/common.windows/ r common.windows' \
@@ -127,6 +145,8 @@ base: Dockerfile imagefiles/
 	$(DOCKER) build -t $(ORG)/base:latest \
 		--build-arg IMAGE=$(ORG)/base \
 		--build-arg VCS_URL=`git config --get remote.origin.url` \
+		--build-arg ORG=$(ORG) \
+		--file $(BASE_DOCKERFILE) \
 		.
 
 base.test: base
@@ -151,6 +171,7 @@ $(STANDARD_IMAGES): %: %/Dockerfile base
 		--build-arg VCS_REF=`git rev-parse --short HEAD` \
 		--build-arg VCS_URL=`git config --get remote.origin.url` \
 		--build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+		$(BASE_IMAGE_BUILD_ARGS) \
 		$@
 	rm -rf $@/imagefiles
 
@@ -159,8 +180,8 @@ $(STANDARD_IMAGES): %: %/Dockerfile base
 #
 .SECONDEXPANSION:
 $(addsuffix .test,$(STANDARD_IMAGES)): $$(basename $$@)
-	$(DOCKER) run $(RM) dockcross/$(basename $@) > $(BIN)/dockcross-$(basename $@) && chmod +x $(BIN)/dockcross-$(basename $@)
-	$(BIN)/dockcross-$(basename $@) python test/run.py $($@_ARGS)
+	$(DOCKER) run $(RM) $(ORG)/$(basename $@) > $(BIN)/$(ORG)-$(basename $@) && chmod +x $(BIN)/$(ORG)-$(basename $@)
+	$(BIN)/$(ORG)-$(basename $@) python test/run.py $($@_ARGS)
 
 #
 # testing prerequisites implicit rule

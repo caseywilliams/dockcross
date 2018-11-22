@@ -5,3 +5,4 @@ Dockerfile
 browser-asmjs/Dockerfile
 */imagefiles/*
 !imagefiles/*
+!centos7-base/Dockerfile

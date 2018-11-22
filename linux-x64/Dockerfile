@@ -1,7 +1,9 @@
-FROM dockcross/base:latest
-MAINTAINER Matt McCormick "matt.mccormick@kitware.com"
+ARG BASE_IMAGE=dockcross/base:latest
+FROM ${BASE_IMAGE}
 
-ENV CROSS_TRIPLE x86_64-linux-gnu
+ARG CROSS_TRIPLE=x86_64-linux-gnu
+ENV CROSS_TRIPLE ${CROSS_TRIPLE}
+
 ENV CROSS_ROOT /usr/bin
 ENV AS=/usr/bin/${CROSS_TRIPLE}-as \
     AR=/usr/bin/${CROSS_TRIPLE}-ar \
@@ -13,9 +15,11 @@ ENV AS=/usr/bin/${CROSS_TRIPLE}-as \
 
 COPY ${CROSS_TRIPLE}-noop.sh /usr/bin/${CROSS_TRIPLE}-noop
 
+ARG ORG=dockcross
+ENV DEFAULT_DOCKCROSS_IMAGE ${ORG}/linux-x64
+
 COPY Toolchain.cmake /usr/lib/${CROSS_TRIPLE}/
 ENV CMAKE_TOOLCHAIN_FILE /usr/lib/${CROSS_TRIPLE}/Toolchain.cmake
-ENV DEFAULT_DOCKCROSS_IMAGE dockcross/linux-x64
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE

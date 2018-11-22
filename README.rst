@@ -1,3 +1,29 @@
+.. highlight:: shell
+
+Notes on this fork
+==================
+
+Uses an alternate base image based on CentOS 7 instead of the default (Debian
+8).
+
+To build the linux-x64 compiler with this base::
+
+    BASE=centos7 make linux-x64
+
+This generates the images ``dockcross-centos7/base`` and
+``dockcross-centos7/linux-x64``.
+
+Generate the runner script::
+
+    docker run --rm dockcross-centos7/linux-x64 > dockcross-centos7-linux-x64
+    chmod +x dockcross-centos7-linux-x64
+
+Compile and run an example program::
+
+    ./dockcross-centos7-linux-x64 bash -c '$CC test/C/hello.c -o hello'
+    ./hello
+
+
 dockcross
 =========
 
